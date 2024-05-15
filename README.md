@@ -1,9 +1,8 @@
-# Final Project Bonus
+# Final Project
 
 Can you extend a relational database system to support storing and querying over vectors?
 
 ## Change Log
-- Added SIFT1M benchmark.
 - Recall calculation is now fast by assuming data fits in memory. However, you will not get any points by attempting to use the provided code for recall calculation.
 
 ## Steps
@@ -19,12 +18,12 @@ Can you extend a relational database system to support storing and querying over
 ## How to Run
 1. Start the server
 2. Load the provided SIFT1M dataset
-3. Stop the server to flush all the changes 
+3. Stop the server to flush all the changes
 4. Restart the server
 5. Run the provided SIFT benchmark
 6. Check the benchmark result
 
-Note: Your improvement will be evaluated on the provided properties (10k items with 48-dimensional vector embedding each)
+Note: Your improvement will be evaluated on the provided properties (10k items with 48-dimensional vector embedding each), same machine, same time limit(30 minutes).
 
 ## Note
 The new workload includes `insert`. Please be sure to reload the testbed each time you run a benchmark.
@@ -36,7 +35,7 @@ The new workload includes `insert`. Please be sure to reload the testbed each ti
 - You can easily beat our performance by implementing any indexing algorithms for the vector search. Note that you still have to consider correctness because we will measure recall.
 - Make sure `TablePlanner` calls your index, if you choose to implement one.
 - You can look into `org.vanilladb.core.sql.distfn.EuclideanFn` to implement SIMD. Note: Our benchmark will only use `EuclideanFn`. You may choose not to implement SIMD for CosineFn.
-- Make sure you run java with `add-modules jdk.incubator.vector` flag to enable SIMD in Java.
+- Make sure you run jdk17 with `jdk.incubator.vector` package (default jdk17 in VScode is not contain this package) to enable SIMD in Java.
 
 ## Experiments
 
@@ -87,4 +86,4 @@ Note: Only one submission for each team.
 If we find you copying someone's code, you get 0 point for this assignment.
 ## Deadline
 
-Submit your work before **2023/06/21 (Fri) 23:59:59**.
+Submit your work before **2023/06/07 (Fri) 23:59:59**.
