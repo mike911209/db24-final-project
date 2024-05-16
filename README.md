@@ -92,4 +92,4 @@ modify our benchmark is not allowed.
 
 ## Deadline
 
-Submit your work before **2024/06/09 (Sun) 23:59:59**.
+Submit your work before **2024/06/16 (Sun) 23:59:59**.
