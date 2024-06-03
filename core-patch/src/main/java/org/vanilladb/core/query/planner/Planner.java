@@ -101,4 +101,8 @@ public class Planner {
 			throw new UnsupportedOperationException();
 		return uPlanner.executeInsert(cmd, tx);
 	}
+
+	public void executeTrainIndex(String idxName, Transaction tx) {
+		uPlanner.executeTrainIndex(idxName, tx);
+	}
 }

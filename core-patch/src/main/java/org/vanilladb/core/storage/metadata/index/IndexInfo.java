@@ -21,6 +21,7 @@ import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.storage.index.Index;
 import org.vanilladb.core.storage.index.IndexType;
 import org.vanilladb.core.storage.index.SearchKeyType;
+import org.vanilladb.core.storage.index.ivf.IVFIndex;
 import org.vanilladb.core.storage.metadata.TableInfo;
 import org.vanilladb.core.storage.metadata.TableNotFoundException;
 import org.vanilladb.core.storage.tx.Transaction;
@@ -71,6 +72,15 @@ public class IndexInfo {
 					+ "' is not defined in catalog.");
 
 		return Index.newInstance(this, new SearchKeyType(ti.schema(), fldNames), tx);
+	}
+
+	public IVFIndex openIVF(Transaction tx) {
+		TableInfo ti = VanillaDb.catalogMgr().getTableInfo(tblName, tx);
+		if (ti == null)
+			throw new TableNotFoundException("table '" + tblName
+					+ "' is not defined in catalog.");
+
+		return new IVFIndex(this, new SearchKeyType(ti.schema(), fldNames), tx);
 	}
 
 	/**

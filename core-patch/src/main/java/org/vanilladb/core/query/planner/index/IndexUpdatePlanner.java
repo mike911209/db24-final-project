@@ -40,6 +40,8 @@ import org.vanilladb.core.query.planner.UpdatePlanner;
 import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.sql.Constant;
 import org.vanilladb.core.storage.index.Index;
+import org.vanilladb.core.storage.index.ivf.IVFIndex;
+import org.vanilladb.core.storage.index.IndexType;
 import org.vanilladb.core.storage.index.SearchKey;
 import org.vanilladb.core.storage.metadata.index.IndexInfo;
 import org.vanilladb.core.storage.record.RecordId;
@@ -80,9 +82,16 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 		}
 		
 		for (IndexInfo ii : indexes) {
-			Index idx = ii.open(tx);
-			idx.insert(new SearchKey(ii.fieldNames(), fldValMap), rid, true);
-			idx.close();
+			if (ii.indexType() == IndexType.IVF) {
+				// FTODO: cache IVFIndex, not open every time
+				IVFIndex idx = ii.openIVF(tx);
+				idx.insert(new SearchKey(ii.fieldNames(), fldValMap), rid, true);
+				idx.close();
+			} else {
+				Index idx = ii.open(tx);
+				idx.insert(new SearchKey(ii.fieldNames(), fldValMap), rid, true);
+				idx.close();
+			}
 		}
 		
 		VanillaDb.statMgr().countRecordUpdates(data.tableName(), 1);
@@ -279,5 +288,18 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 	public int executeDropIndex(DropIndexData data, Transaction tx) {
 		VanillaDb.catalogMgr().dropIndex(data.indexName(), tx);
 		return 0;
+	}
+
+	public void executeTrainIndex(String idxName, Transaction tx) {
+		IndexInfo ii = VanillaDb.catalogMgr().getIndexInfoByName(idxName, tx);
+		if (ii.indexType() == IndexType.IVF) {
+			// convert Index type to IVF index
+			// FTODO: not open IVFIndex every time
+			IVFIndex idx = ii.openIVF(tx);
+			idx.train(tx);
+			idx.close();
+		} else {
+			throw new IllegalArgumentException("unsupported index type");
+		}
 	}
 }

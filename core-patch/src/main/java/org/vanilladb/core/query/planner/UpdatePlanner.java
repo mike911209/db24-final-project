@@ -139,4 +139,6 @@ public interface UpdatePlanner {
 	 * @return the number of affected records
 	 */
 	int executeDropIndex(DropIndexData data, Transaction tx);
+
+	void executeTrainIndex(String idxName, Transaction tx);
 }

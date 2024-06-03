@@ -141,4 +141,8 @@ public class StoredProcedureUtils {
 	public static int executeInsert(InsertData sql, Transaction tx) {
 		return VanillaDb.newPlanner().executeInsert(sql, tx);
 	}
+
+	public static void executeTrainIndex(String idxName, Transaction tx) {
+		VanillaDb.newPlanner().executeTrainIndex(idxName, tx);
+	}
 }
