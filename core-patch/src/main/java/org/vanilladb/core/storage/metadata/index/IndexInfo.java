@@ -26,6 +26,7 @@ import org.vanilladb.core.storage.metadata.TableInfo;
 import org.vanilladb.core.storage.metadata.TableNotFoundException;
 import org.vanilladb.core.storage.tx.Transaction;
 
+
 /**
  * The information about an index. This information is used by the query planner
  * in order to estimate the costs of using the index, and to obtain the schema

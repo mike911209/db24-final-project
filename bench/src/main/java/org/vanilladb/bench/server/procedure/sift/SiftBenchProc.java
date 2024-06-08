@@ -15,7 +15,7 @@ public class SiftBenchProc extends StoredProcedure<SiftBenchParamHelper> {
     public SiftBenchProc() {
         super(new SiftBenchParamHelper());
     }
-
+    // ASFINAL
     @Override
     protected void executeSql() {
         SiftBenchParamHelper paramHelper = getHelper();

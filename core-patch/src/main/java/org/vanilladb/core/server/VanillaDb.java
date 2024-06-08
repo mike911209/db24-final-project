@@ -27,7 +27,8 @@ import org.vanilladb.core.query.planner.Planner;
 import org.vanilladb.core.query.planner.QueryPlanner;
 import org.vanilladb.core.query.planner.UpdatePlanner;
 import org.vanilladb.core.query.planner.index.IndexUpdatePlanner;
-import org.vanilladb.core.query.planner.opt.HeuristicQueryPlanner;
+// import org.vanilladb.core.query.planner.opt.HeuristicQueryPlanner;
+import org.vanilladb.core.query.planner.opt.AdvancedQueryPlanner;
 import org.vanilladb.core.query.planner.opt.TrueKNNQueryPlanner;
 import org.vanilladb.core.server.task.TaskMgr;
 import org.vanilladb.core.sql.storedprocedure.SampleStoredProcedureFactory;
@@ -35,6 +36,7 @@ import org.vanilladb.core.sql.storedprocedure.StoredProcedureFactory;
 import org.vanilladb.core.storage.file.FileMgr;
 import org.vanilladb.core.storage.log.LogMgr;
 import org.vanilladb.core.storage.metadata.CatalogMgr;
+import org.vanilladb.core.storage.metadata.index.IndexInfo;
 import org.vanilladb.core.storage.metadata.statistics.StatMgr;
 import org.vanilladb.core.storage.tx.Transaction;
 import org.vanilladb.core.storage.tx.TransactionMgr;
@@ -55,6 +57,9 @@ import org.vanilladb.core.util.Profiler;
  * initialization, and are useful for debugging purposes.
  */
 public class VanillaDb {
+
+	// ASFINAL IVF => Centroid Page
+	public static IndexInfo IVFII;
 
 	// Logger
 	private static Logger logger = Logger.getLogger(VanillaDb.class.getName());
@@ -108,10 +113,10 @@ public class VanillaDb {
 		 * Note: We read properties file here before, but we moved it to a utility
 		 * class, PropertiesFetcher, for safety reason.
 		 */
-
+		// ASFINAL: modify the default query
 		// read classes
 		queryPlannerCls = CoreProperties.getLoader().getPropertyAsClass(VanillaDb.class.getName() + ".QUERYPLANNER",
-				HeuristicQueryPlanner.class, QueryPlanner.class);
+				AdvancedQueryPlanner.class, QueryPlanner.class);
 		updatePlannerCls = CoreProperties.getLoader().getPropertyAsClass(VanillaDb.class.getName() + ".UPDATEPLANNER",
 				IndexUpdatePlanner.class, UpdatePlanner.class);
 

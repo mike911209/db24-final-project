@@ -302,4 +302,6 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 			throw new IllegalArgumentException("unsupported index type");
 		}
 	}
+
+	
 }

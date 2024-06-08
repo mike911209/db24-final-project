@@ -21,8 +21,11 @@ import java.util.List;
 import static org.vanilladb.core.sql.Type.INTEGER;
 import static org.vanilladb.core.sql.Type.VECTOR;
 
+import org.vanilladb.core.query.planner.opt.AdvancedQueryPlanner;
+import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.sql.Constant;
 import org.vanilladb.core.sql.Schema;
+import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.storage.index.Index;
 import org.vanilladb.core.storage.index.SearchKey;
 import org.vanilladb.core.storage.index.SearchKeyType;
@@ -32,6 +35,9 @@ import org.vanilladb.core.storage.metadata.index.IndexInfo;
 import org.vanilladb.core.storage.record.RecordFile;
 import org.vanilladb.core.storage.record.RecordId;
 import org.vanilladb.core.storage.tx.Transaction;
+import org.vanilladb.core.util.CoreProperties;
+
+import smile.math.distance.EuclideanDistance;
 
 /**
  * A static hash implementation of {@link Index}. A fixed number of buckets is
@@ -42,18 +48,16 @@ public class IVFIndex extends Index {
 	/**
 	 * A field name of the schema of index records.
 	 */
-	private static final String SCHEMA_ID = "i_id", SCHEMA_VECTOR = "i_emb";
-			
 
-	public static long searchCost(SearchKeyType keyType, long totRecs, long matchRecs) {
-		// int rpb = Buffer.BUFFER_SIZE / RecordPage.slotSize(schema(keyType));
-		// return (totRecs / rpb) / NUM_BUCKETS;
-		return 1;
-	}
+	public static final String SCHEMA_ID = "i_id", SCHEMA_VECTOR = "i_emb";
+	public static final String CENTROID_NAME = "centroid";
 	
-	// private static String keyFieldName(int index) {
-	// 	return SCHEMA_KEY + index;
-	// }
+	public static final int N = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".N", 2);
+    public static final int K = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".K", 10);
+	
+	public static final int DIMENSION = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".DIMENSION", 128);
+    public static final int random_seed = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".SEED", 56);
+
 
 	/**
 	 * Returns the schema of the index records.
@@ -67,142 +71,87 @@ public class IVFIndex extends Index {
 		return sch;
 	}
 	
-	private SearchKey searchKey;
-	private RecordFile rf;
-	private boolean isBeforeFirsted;
-	private List<SearchKey> centroidList;
-	private static List<SearchKey> recordList = new ArrayList<SearchKey>(1000);
+	private int cur_centroid_id = 0;
+	private static List<float[]> centroidVecList;
+	private static List<SearchKey> recordList = new ArrayList<SearchKey>(100000);
+	
 
-	/**
-	 * Opens a hash index for the specified index.
-	 * 
-	 * @param ii
-	 *            the information of this index
-	 * @param keyType
-	 *            the type of the search key
-	 * @param tx
-	 *            the calling transaction
-	 */
 	public IVFIndex(IndexInfo ii, SearchKeyType keyType, Transaction tx) {
 		super(ii, keyType, tx);
 	}
 
+	
 	@Override
 	public void preLoadToMemory() {
 		// NOTE: not implemented yet, we can think of what case will this function be used and where to use
 
-		// for (int i = 0; i < NUM_BUCKETS; i++) {
-		// 	String tblname = ii.indexName() + i + ".tbl";
-		// 	long size = fileSize(tblname);
-		// 	BlockId blk;
-		// 	for (int j = 0; j < size; j++) {
-		// 		blk = new BlockId(tblname, j);
-		// 		tx.bufferMgr().pin(blk);
-		// 	}
-		// }
+		if(centroidVecList == null) {
+			// load the centroid page
+			centroidVecList = new ArrayList<float[]>();
+			TableInfo ti = new TableInfo(ii.tableName() + CENTROID_NAME, schema());
+			RecordFile rf = ti.open(tx, false);
+			rf.beforeFirst();
+			while (rf.next()) {
+				float[] vec = (float [])rf.getVal(SCHEMA_VECTOR).asJavaVal();
+				centroidVecList.add(vec);
+			}
+			rf.close();
+		}
 	}
 
-	/**
-	 * Positions the index before the first index record having the specified
-	 * search key. The method hashes the search key to determine the bucket, and
-	 * then opens a {@link RecordFile} on the file corresponding to the bucket.
-	 * The record file for the previous bucket (if any) is closed.
-	 * 
-	 * @see Index#beforeFirst(SearchRange)
-	 */
 	@Override
 	public void beforeFirst(SearchRange searchRange) {
-		// FTODO: open the corresponding record file, store it in some variable
+		// !FTODO: open the corresponding record file, store it in some variable
 		// 		 the record file will be used in next()
+		if (centroidVecList == null) {
+			// open the record file
+			preLoadToMemory();
+			cur_centroid_id = 0;
+		} else {
+			cur_centroid_id = 0;
+		}
 	}
-
-	/**
-	 * Moves to the next index record having the search key.
-	 * 
-	 * @see Index#next()
-	 */
 	@Override
 	public boolean next() {
-		// FTODO: call the beforeFirst method first
+		// !FTODO: call the beforeFirst method first
 		// 		 iterate the record file opened in beforeFirst to find the next record
-		if (!isBeforeFirsted)
-			throw new IllegalStateException("You must call beforeFirst() before iterating index '"
-					+ ii.indexName() + "'");
-		
-		// while (rf.next())
-		// 	if (getKey().equals(searchKey))
-		// 		return true;
-		return false;
+		if (cur_centroid_id >= centroidVecList.size()) {
+			return false;
+		}
+		else {
+			cur_centroid_id++;
+			return true;
+		}
 	}
 
-	/**
-	 * Retrieves the data record ID from the current index record.
-	 * 
-	 * @see Index#getDataRecordId()
-	 */
 	@Override
 	public RecordId getDataRecordId() {
 		// NOTE: This is a dummy function since we don't have data record id in IVF index
 
-		// long blkNum = (Long) rf.getVal(SCHEMA_RID_BLOCK).asJavaVal();
-		// int id = (Integer) rf.getVal(SCHEMA_RID_ID).asJavaVal();
-		// return new RecordId(new BlockId(dataFileName, blkNum), id);
 		return new RecordId(null, 0);
 	}
 
-	/**
-	 * Inserts a new index record into this index.
-	 * 
-	 * @see Index#insert(SearchKey, RecordId, boolean)
-	 */
+	// ASFINAL: there should be another INSERT
 	@Override
 	public void insert(SearchKey key, RecordId dataRecordId, boolean doLogicalLogging) {
 		// NOTE: insert data into static list to be used later in clustering
-
+		// System.out.println("val is " + key.get(1));
 		// insert the data
+		// System.out.println("id is: " + key.get(0));
+
 		recordList.add(key);
 	}
 
-	/**
-	 * Deletes the specified index record.
-	 * 
-	 * @see Index#delete(SearchKey, RecordId, boolean)
-	 */
+	
 	@Override
 	public void delete(SearchKey key, RecordId dataRecordId, boolean doLogicalLogging) {
 		// NOTE: not implemented yet
-
-		// search the position
-		beforeFirst(new SearchRange(key));
-		
-		// log the logical operation starts
-		if (doLogicalLogging)
-			tx.recoveryMgr().logLogicalStart();
-		
-		// delete the specified entry
-		while (next())
-			if (getDataRecordId().equals(dataRecordId)) {
-				rf.delete();
-				return;
-			}
-		
-		// log the logical operation ends
-		if (doLogicalLogging)
-			tx.recoveryMgr().logIndexDeletionEnd(ii.indexName(), key,
-					dataRecordId.block().number(), dataRecordId.id());
 	}
 
-	/**
-	 * Closes the index by closing the current table scan.
-	 * 
-	 * @see Index#close()
-	 */
 	@Override
 	public void close() {
-		// FTODO: close the corresponding record file that was opened in beforeFirst()
-
-		if (rf != null)
-			rf.close();
+		// !FTODO: close the corresponding record file that was opened in beforeFirst()
+		cur_centroid_id = 0;
 	}
 
 	public void train(Transaction tx) {
@@ -210,10 +159,14 @@ public class IVFIndex extends Index {
 		List<List<SearchKey>> clusters = clustering();
 		System.out.println("clusters size: " + clusters.size());
 
+		// create centroid page MIKE 
+		// List<float[]> centroidList
+		// 		* element -> 128 dimension float array
+
 		// create index files
 		for (int i = 0; i < clusters.size(); i++) {
 			// create a table file for each cluster
-			String tblname = ii.indexName() + i + ".tbl";
+			String tblname = ii.indexName() + i;
 			TableInfo ti = new TableInfo(tblname, schema());
 			RecordFile rf = ti.open(tx, true);
 
@@ -225,11 +178,12 @@ public class IVFIndex extends Index {
 			List<SearchKey> cluster = clusters.get(i);
 
 			// insert records
+			System.out.println("insert " + cluster.size() + " records in cluster " + i);
 			for (SearchKey record : cluster) {
 				rf.insert();
-				System.out.println(record.get(0));
-				System.out.println(record.get(1));
-				System.out.println("record length: " + record.length());
+				// System.out.println(record.get(0));
+				// System.out.println(record.get(1));
+				// System.out.println("record length: " + record.length());
 				rf.setVal(SCHEMA_ID, record.get(0));
 				rf.setVal(SCHEMA_VECTOR, record.get(1));
 			}
@@ -241,43 +195,51 @@ public class IVFIndex extends Index {
 	}
 
 	public Constant getval(String fldName) {
-		return rf.getVal(fldName);
+		if (cur_centroid_id >= centroidVecList.size()) {
+			System.err.println("Error: no more records");
+			return null;
+		}
+			
+		return new VectorConstant(centroidVecList.get(cur_centroid_id));
 	}
 
 	private List<List<SearchKey>> clustering() {
-		// FTODO: clustering algorithm
+		// !!!FTODO: clustering algorithm
 		//		 return the List of List cluster records
 		// 		 	* outer List -> clusters
 		// 			* inner List -> records in a cluster
-		int numRecord = recordList.size();
-		int clusterSize = numRecord / 5;
-		int count = 1;
 
-		List<List<SearchKey>> clusters = new ArrayList<List<SearchKey>>(5);
-		List<SearchKey> cluster = new ArrayList<SearchKey>(clusterSize);
+		// Step1: input training data
+		System.out.println("Initializing IndexCluster...\n");
+		IndexCluster indexCluster = new IndexCluster(recordList);
 
-		for (int i = 0; i < numRecord; i++) {
-			if (i < count * clusterSize) {
-				cluster.add(recordList.get(i));
-			} else {
-				clusters.add(cluster);
-				cluster = new ArrayList<SearchKey>(clusterSize);
-				count++;
-			}
-		}
+		// Step2: start training
+		System.out.println("Training IndexCluster...\n");
+		indexCluster.KmeansTraining();
 
-		return clusters;
+		// Step3: format the output data
+		centroidVecList = indexCluster.getCentroidList();
+		return indexCluster.getClusteringList();
+
 	}
 
-	// private long fileSize(String fileName) {
-	// 	tx.concurrencyMgr().readFile(fileName);
-	// 	return VanillaDb.fileMgr().size(fileName);
-	// }
-	
-	// private SearchKey getKey() {
-	// 	Constant[] vals = new Constant[keyType.length()];
-	// 	for (int i = 0; i < vals.length; i++)
-	// 		vals[i] = rf.getVal(keyFieldName(i));
-	// 	return new SearchKey(vals);
-	// }
+
+
+
+	private int chooseInsertCluster(SearchKey key) {
+		preLoadToMemory();
+		int min_id = 0;
+		float min_dist = Float.MAX_VALUE;
+		float[] keyVec = (float[]) key.get(1).asJavaVal();
+		EuclideanDistance distance = new EuclideanDistance();
+		for (float[] vec : centroidVecList) {
+			
+			float dist = (float) distance.d(keyVec, vec);
+			if (dist < min_dist) {
+				min_dist = dist;
+				min_id = centroidVecList.indexOf(vec);
+			}
+		}
+		return min_id;
+	}
 }
