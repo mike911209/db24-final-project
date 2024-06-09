@@ -54,6 +54,9 @@ import org.vanilladb.core.storage.tx.Transaction;
 public class IndexUpdatePlanner implements UpdatePlanner {
 	@Override
 	public int executeInsert(InsertData data, Transaction tx) {
+		String tblname = data.tableName();
+		Plan p = new TablePlan(tblname, tx);
+
 		// Construct a map from field names to values
 		Map<String, Constant> fldValMap = new HashMap<String, Constant>();
 		Iterator<Constant> valIter = data.vals().iterator();
@@ -61,6 +64,15 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 			Constant val = valIter.next();
 			fldValMap.put(fldname, val);
 		}
+
+		// Insert the record into the record file
+		UpdateScan s = (UpdateScan) p.open();
+		s.insert();
+		for (Map.Entry<String, Constant> fldValPair : fldValMap.entrySet()) {
+			s.setVal(fldValPair.getKey(), fldValPair.getValue());
+		}
+		// RecordId rid = s.getRecordId();
+		s.close();
 
 		// insert the record into IVF index
 		IndexInfo ii = VanillaDb.catalogMgr().getIndexInfoByName(IVFIndex.INDEXNAME, tx);
@@ -280,6 +292,9 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 
 	@Override
 	public int executeLoad(InsertData data, Transaction tx) {
+		String tblname = data.tableName();
+		Plan p = new TablePlan(tblname, tx);
+
 		// Construct a map from field names to values
 		Map<String, Constant> fldValMap = new HashMap<String, Constant>();
 		Iterator<Constant> valIter = data.vals().iterator();
@@ -287,6 +302,15 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 			Constant val = valIter.next();
 			fldValMap.put(fldname, val);
 		}
+
+		// Insert the record into the record file
+		UpdateScan s = (UpdateScan) p.open();
+		s.insert();
+		for (Map.Entry<String, Constant> fldValPair : fldValMap.entrySet()) {
+			s.setVal(fldValPair.getKey(), fldValPair.getValue());
+		}
+		// RecordId rid = s.getRecordId();
+		s.close();
 
 		// insert the record into IVF index
 		IndexInfo ii = VanillaDb.catalogMgr().getIndexInfoByName(IVFIndex.INDEXNAME, tx);
