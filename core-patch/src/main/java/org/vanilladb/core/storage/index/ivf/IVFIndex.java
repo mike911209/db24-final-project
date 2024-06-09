@@ -146,6 +146,16 @@ public class IVFIndex extends Index {
 
 		System.out.println("Inserting record into cluster " + clusterId);
 
+		// open the record file
+		TableInfo ti = new TableInfo(ii.indexName() + clusterId, schema());
+		RecordFile rf = ti.open(tx, true);
+		if (rf.fileSize() == 0)
+			RecordFile.formatFileHeader(ti.fileName(), tx);
+		rf.beforeFirst();
+		rf.insert();
+		rf.setVal(SCHEMA_ID, key.get(0));
+		rf.setVal(SCHEMA_VECTOR, key.get(1));
+		rf.close();
 	}
 
 	public void load(SearchKey key) {
