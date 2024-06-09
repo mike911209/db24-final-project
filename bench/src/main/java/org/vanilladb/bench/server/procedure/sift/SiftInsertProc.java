@@ -11,7 +11,7 @@ public class SiftInsertProc extends StoredProcedure<SiftInsertParamHelper> {
         super(new SiftInsertParamHelper());
     }
 
-    // FTODO: modify insert tbl
+
     @Override
     protected void executeSql() {
         SiftInsertParamHelper paramHelper = getHelper();

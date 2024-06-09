@@ -1,3 +1,4 @@
+// MIKE: Implement the IVFIndex class
 /*******************************************************************************
  * Copyright 2016, 2018 vanilladb.org contributors
  *
@@ -54,11 +55,11 @@ public class IVFIndex extends Index {
 
 	public static final String INDEXNAME = "idx_sift";
 	
-	public static final int N = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".N", 2);
+	public static final int N = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".N", 10);
     public static final int K = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".K", 10);
 	
-	public static final int DIMENSION = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".DIMENSION", 128);
-    public static final int random_seed = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".SEED", 56);
+	public static final int DIMENSION = CoreProperties.getLoader().getPropertyAsInteger(KmeansAlgo.class.getName() + ".DIMENSION", 128);
+    public static final int random_seed = CoreProperties.getLoader().getPropertyAsInteger(KmeansAlgo.class.getName() + ".SEED", 56);
 
 
 	/**
@@ -92,7 +93,7 @@ public class IVFIndex extends Index {
 	@Override
 	public void preLoadToMemory() {
 		// NOTE: not implemented yet, we can think of what case will this function be used and where to use
-		System.out.println("Preloading to memory...");
+		// System.out.println("Preloading to memory...");
 		if(centroidVecList == null) {
 			// load the centroid page
 			centroidVecList = new ArrayList<float[]>();
@@ -100,7 +101,7 @@ public class IVFIndex extends Index {
 			RecordFile rf = ti.open(tx, false);
 			rf.beforeFirst();
 			while (rf.next()) {
-				System.out.println("Loading centroid...");
+				// System.out.println("Loading centroid...");
 				float[] vec = (float [])rf.getVal(SCHEMA_VECTOR).asJavaVal();
 				centroidVecList.add(vec);
 			}
@@ -110,8 +111,6 @@ public class IVFIndex extends Index {
 
 	@Override
 	public void beforeFirst(SearchRange searchRange) {
-		// !FTODO: open the corresponding record file, store it in some variable
-		// 		 the record file will be used in next()
 		if (centroidVecList == null) {
 			// open the record file
 			preLoadToMemory();
@@ -122,8 +121,7 @@ public class IVFIndex extends Index {
 	}
 	@Override
 	public boolean next() {
-		// !FTODO: call the beforeFirst method first
-		// 		 iterate the record file opened in beforeFirst to find the next record
+	
 		if (cur_centroid_id + 1 >= centroidVecList.size()) {
 			return false;
 		}
@@ -140,7 +138,6 @@ public class IVFIndex extends Index {
 		return new RecordId(null, 0);
 	}
 
-	// ASFINAL: there should be another INSERT
 	@Override
 	public void insert(SearchKey key, RecordId dataRecordId, boolean doLogicalLogging) {
 		int clusterId = chooseInsertCluster(key);
@@ -173,7 +170,7 @@ public class IVFIndex extends Index {
 
 	@Override
 	public void close() {
-		// !FTODO: close the corresponding record file that was opened in beforeFirst()
+		// NOTE: close the corresponding record file that was opened in beforeFirst()
 		cur_centroid_id = -1;
 	}
 
@@ -197,7 +194,7 @@ public class IVFIndex extends Index {
 		}
 		rfCentroid.close();
 
-		// create index files
+		// create data page
 		for (int i = 0; i < clusters.size(); i++) {
 			// create a table file for each cluster
 			String tblname = ii.indexName() + i;
@@ -219,6 +216,7 @@ public class IVFIndex extends Index {
 				// System.out.println(record.get(0));
 				// System.out.println(record.get(1));
 				// System.out.println("record length: " + record.length());
+				System.out.println("id is: " + record.get(0));
 				rf.setVal(SCHEMA_ID, record.get(0));
 				rf.setVal(SCHEMA_VECTOR, record.get(1));
 			}
@@ -239,14 +237,14 @@ public class IVFIndex extends Index {
 	}
 
 	private List<List<SearchKey>> clustering() {
-		// !!!FTODO: clustering algorithm
+		// NOTE: clustering algorithm
 		//		 return the List of List cluster records
 		// 		 	* outer List -> clusters
 		// 			* inner List -> records in a cluster
 
 		// Step1: input training data
 		System.out.println("Initializing IndexCluster...\n");
-		IndexCluster indexCluster = new IndexCluster(recordList);
+		KmeansAlgo indexCluster = new KmeansAlgo(recordList);
 
 		// Step2: start training
 		System.out.println("Training IndexCluster...\n");
@@ -259,7 +257,6 @@ public class IVFIndex extends Index {
 	}
 
 	private int chooseInsertCluster(SearchKey key) {
-		preLoadToMemory();
 		int min_id = 0;
 		float min_dist = Float.MAX_VALUE;
 		float[] keyVec = (float[]) key.get(1).asJavaVal();

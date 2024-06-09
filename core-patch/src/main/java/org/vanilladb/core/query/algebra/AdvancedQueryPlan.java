@@ -1,4 +1,4 @@
-// YAHUI: This is the class that we need to modify to implement the advanced query planner.
+// YAHUI: Plan
 package org.vanilladb.core.query.algebra;
 
 import org.vanilladb.core.sql.Schema;

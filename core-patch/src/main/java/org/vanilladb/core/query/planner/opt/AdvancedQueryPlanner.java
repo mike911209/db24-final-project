@@ -1,13 +1,11 @@
-// YAHUI: This is the class that we need to modify to implement the advanced query planner.
+// YAHUI: Planner
 package org.vanilladb.core.query.planner.opt;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.vanilladb.core.query.algebra.Plan;
-import org.vanilladb.core.query.algebra.ProjectPlan;
 import org.vanilladb.core.query.algebra.TablePlan;
-import org.vanilladb.core.query.algebra.materialize.GroupByPlan;
 import org.vanilladb.core.query.algebra.materialize.SortPlan;
 import org.vanilladb.core.query.parse.QueryData;
 import org.vanilladb.core.query.planner.QueryPlanner;
@@ -15,14 +13,11 @@ import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.sql.distfn.DistanceFn;
 import org.vanilladb.core.storage.tx.Transaction;
-import org.vanilladb.core.util.CoreProperties;
 import org.vanilladb.core.query.algebra.AdvancedQueryPlan;
 import org.vanilladb.core.query.algebra.LimitPlan;
 import org.vanilladb.core.storage.index.ivf.IVFIndex;
 import org.vanilladb.core.storage.index.SearchKey;
 import org.vanilladb.core.storage.index.SearchRange;
-
-// import org.vanilladb.core.sql.distfn.EuclideanFn;
 
 
 // ASFINAL: all implemented by table
@@ -55,8 +50,8 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             dist.add(tmp_dist);
         }
 
+        // ASFINAL: Optimize needed
         // Step 2: Choose the top N smallest distance (map to the centroid id)
-        // ASFINAL: optimization
         if (dist.size() != IVFIndex.K) {
             System.err.println("number of dist: " + dist.size() + " K: " + IVFIndex.K);
             System.err.println("Error: the number of centroid is not equal to K");
@@ -85,44 +80,25 @@ public class AdvancedQueryPlanner implements QueryPlanner {
         // Step 3: Create the plans
 
         // Step 3.1: TablePlan
-        // System.out.println("table plan");
         if (id_centroid.size() != IVFIndex.N) {
             System.err.println("Error: the number of centroid is not equal to N");
         }
         for (int cluster : id_centroid) {
             trunkPlans.add(new TablePlan(IVFIndex.INDEXNAME + cluster, tx));
-            System.out.println("table plan: " + IVFIndex.INDEXNAME + cluster);
         }
 
-        // Step 3.2: GroupByPlan => 照理來講不會執行
-        // System.out.println("group by plan");
-        if (data.groupFields() != null) {
+
+        // Step 3.2: SortPlan
+        if (data.embeddingFields() != null) {
             for (int i = 0; i < IVFIndex.N; i++) {
-                trunk = new GroupByPlan(trunkPlans.get(i), data.groupFields(), 
-                            data.aggregationFn(), tx);
+                // System.out.println("sort plan: " + data.embeddingFields().size());
+                trunk = new SortPlan(trunkPlans.get(i), 
+                            data.embeddingFields().get(0), tx);
                 trunkPlans.set(i, trunk);
             }
         }
 
-        // Step 3.3: SortPlan
-        // System.out.println("sort plan");
-        if (data.sortFields() != null) {
-            for (int i = 0; i < IVFIndex.N; i++) {
-                trunk = new SortPlan(trunkPlans.get(i), data.sortFields(),
-                            data.sortDirections(), tx);
-                trunkPlans.set(i, trunk);
-            }
-        }
-
-        // Step 3.4: ProjectPlan
-        // System.out.println("project plan");
-        // for (int i = 0; i < IVFIndex.N; i++) {
-        //     trunk = new ProjectPlan(trunkPlans.get(i), data.projectFields());
-        //     trunkPlans.set(i, trunk);
-        // }
-
-        // Step 3.5: LimitPlan
-        // System.out.println("limit plan");
+        // Step 3.3: LimitPlan
         if (data.limit() != -1) {
             for (int i = 0; i < IVFIndex.N; i++) {
                 trunk = new LimitPlan(trunkPlans.get(i), data.limit());
@@ -130,11 +106,8 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             }
         }
 
-        // Step 3.6: AdvancedPlan
-        // System.out.println("advanced plan");
+        // Step 3.4: AdvancedPlan
 		topPlan = new AdvancedQueryPlan(trunkPlans, data.embeddingFields(), data.projectFields());
-
-
 
         return topPlan;
     }

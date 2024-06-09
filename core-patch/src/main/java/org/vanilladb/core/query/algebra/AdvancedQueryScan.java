@@ -1,4 +1,4 @@
-// YAHUI: This is the class that we need to modify to implement the advanced query planner.
+// YAHUI: Scan
 package org.vanilladb.core.query.algebra;
 
 import java.util.List;
@@ -78,10 +78,10 @@ public class AdvancedQueryScan implements Scan {
                 dist.add(tmp_dist);
             }
         }
-        // 正常來講每個cluseter都會limit出足夠的資料(20)
+        // 如果該cluster不足LIMIT個，則設為MAX_VALUE，避免選到
         else if (!subScans.get(curCluster).next()) {
-            System.err.println("Error: Not enough data to return.");
-            return false;
+            dist.set(curCluster, Float.MAX_VALUE);
+            return true;
         }
         // 把next過的cluster的dist重新計算
         else {

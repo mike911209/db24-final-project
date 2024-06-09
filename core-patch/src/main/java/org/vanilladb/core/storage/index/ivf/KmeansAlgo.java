@@ -1,10 +1,8 @@
-// YAHUI: This is the class for clustering the data points into k clusters
+// YAHUI: KmeansAlgo
 package org.vanilladb.core.storage.index.ivf;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
 
 import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.storage.index.SearchKey;
@@ -13,16 +11,15 @@ import smile.math.distance.EuclideanDistance;
 import java.util.Random;
 
 
-// ASFINAL: lot of distance need to be optimized
-public class IndexCluster {
+// ASFINAL: Optimization needed
+public class KmeansAlgo {
 
     private static List<SearchKey> trainingData;
     private static List<List<SearchKey>> resultData;
     private static List<float[]> centroidData;
-    // private static List<SearchKey> centroidData;
     
 
-    public IndexCluster(List<SearchKey> tdata) {
+    public KmeansAlgo(List<SearchKey> tdata) {
         trainingData = tdata;
     }
 
@@ -43,23 +40,23 @@ public class IndexCluster {
         KMeans kmeans = new KMeans(IVFIndex.K, IVFIndex.random_seed);
         kmeans.fit(data);
 
-        // set resultData
+        // set resultData (format the output data)
         int[] clusters = kmeans.predict(data);
         resultData = new ArrayList<List<SearchKey>>(IVFIndex.K);
         for (int i = 0; i < IVFIndex.K; i++) {
             resultData.add(new ArrayList<SearchKey>());
         }
         for (int i = 0; i < data.length; i++) {
-            if (i % 10000 == 0)
-                System.out.printf("Data point %d is in cluster %d\n", i, clusters[i]);
+            // if (i % 10000 == 0)
+            //     System.out.printf("Data point %d is in cluster %d\n", i, clusters[i]);
             resultData.get(clusters[i]).add(trainingData.get(i));
         }
 
-        // set centroidData
+        // set centroidData (format the output data)
         float[][] centroids = kmeans.centroids();
         centroidData = new ArrayList<float[]>();
         for (int i = 0; i < centroids.length; i++) {
-            System.out.println("Centroid " + i + ":" + Arrays.toString(centroids[i]));
+            // System.out.println("Centroid " + i + ":" + Arrays.toString(centroids[i]));
             centroidData.add(centroids[i]);
         }
     }
@@ -76,7 +73,6 @@ public class IndexCluster {
         return resultData;
     }    
 
-    // SIMD
     private static class KMeans {
         private int k;
         private float[][] centroids;
@@ -208,76 +204,5 @@ public class IndexCluster {
     }
 }
 
-    // private static class MiniBatchKMeans {
-    //     private double[][] centroids;
-    //     private int[] counts;
-    //     private double[] learningRates;
-    //     private Random rand;
-
-    //     public MiniBatchKMeans(int k) {
-    //         this.centroids = new double[k][DIMENSION];
-    //         this.counts = new int[k];
-    //         this.learningRates = new double[k];
-    //         this.rand = new Random();
-    //     }
-
-    //     public void fit(double[][] data) {
-    //         for (int i = 0; i < k; i++) {
-    //             centroids[i] = data[rand.nextInt(data.length)].clone();
-    //             learningRates[i] = LEARNING_RATE;
-    //         }
-
-    //         for (int iter = 0; iter < 100; iter++) {
-    //             System.out.println("iter " + iter);
-    //             int batchSize = Math.min(BATCH_SIZE, data.length);
-    //             double[][] batchData = new double[batchSize][DIMENSION];
-    //             for (int i = 0; i < batchSize; i++) {
-    //                 batchData[i] = data[rand.nextInt(data.length)];
-    //             }
-
-    //             for (int i = 0; i < batchSize; i++) {
-    //                 double[] point = batchData[i];
-    //                 int nearest = nearestCluster(point);
-    //                 updateCentroid(point, nearest);
-    //             }
-
-    //             for (int i = 0; i < k; i++) {
-    //                 learningRates[i] *= 0.99;
-    //             }
-    //         }
-    //     }
-
-    //     private int nearestCluster(double[] point) {
-    //         int minCluster = 0;
-    //         double minDistance = Double.POSITIVE_INFINITY;
-    //         EuclideanDistance distance = new EuclideanDistance();
-    //         for (int i = 0; i < k; i++) {
-    //             double dist = distance.d(point, centroids[i]);
-    //             if (dist < minDistance) {
-    //                 minDistance = dist;
-    //                 minCluster = i;
-    //             }
-    //         }
-    //         return minCluster;
-    //     }
-
-    //     private void updateCentroid(double[] point, int cluster) {
-    //         for (int i = 0; i < DIMENSION; i++) {
-    //             centroids[cluster][i] += learningRates[cluster] * (point[i] - centroids[cluster][i]);
-    //         }
-    //         counts[cluster]++;
-    //     }
-
-    //     public int[] predict(double[][] data) {
-    //         int[] clusters = new int[data.length];
-    //         for (int i = 0; i < data.length; i++) {
-    //             clusters[i] = nearestCluster(data[i]);
-    //         }
-    //         return clusters;
-    //     }
-
-    //     public double[][] centroids() {
-    //         return centroids;
-    //     }
-    // }
+// TRY miniBatch(?)
 
