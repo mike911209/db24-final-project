@@ -92,7 +92,7 @@ public class IVFIndex extends Index {
 	@Override
 	public void preLoadToMemory() {
 		// NOTE: not implemented yet, we can think of what case will this function be used and where to use
-
+		System.out.println("Preloading to memory...");
 		if(centroidVecList == null) {
 			// load the centroid page
 			centroidVecList = new ArrayList<float[]>();
@@ -100,6 +100,7 @@ public class IVFIndex extends Index {
 			RecordFile rf = ti.open(tx, false);
 			rf.beforeFirst();
 			while (rf.next()) {
+				System.out.println("Loading centroid...");
 				float[] vec = (float [])rf.getVal(SCHEMA_VECTOR).asJavaVal();
 				centroidVecList.add(vec);
 			}
@@ -146,6 +147,16 @@ public class IVFIndex extends Index {
 
 		System.out.println("Inserting record into cluster " + clusterId);
 
+		// open the record file
+		TableInfo ti = new TableInfo(ii.indexName() + clusterId, schema());
+		RecordFile rf = ti.open(tx, true);
+		if (rf.fileSize() == 0)
+			RecordFile.formatFileHeader(ti.fileName(), tx);
+		rf.beforeFirst();
+		rf.insert();
+		rf.setVal(SCHEMA_ID, key.get(0));
+		rf.setVal(SCHEMA_VECTOR, key.get(1));
+		rf.close();
 	}
 
 	public void load(SearchKey key) {
@@ -163,7 +174,7 @@ public class IVFIndex extends Index {
 	@Override
 	public void close() {
 		// !FTODO: close the corresponding record file that was opened in beforeFirst()
-		cur_centroid_id = 0;
+		cur_centroid_id = -1;
 	}
 
 	public void train(Transaction tx) {
@@ -175,6 +186,7 @@ public class IVFIndex extends Index {
 		System.out.println("Creating centroid page...");
 		String tblName = ii.indexName() + CENTROID_NAME;
 		TableInfo tiCentroid = new TableInfo(tblName, schemaCentroid());
+		VanillaDb.catalogMgr().createTable(tblName, schemaCentroid(), tx);
 		RecordFile rfCentroid = tiCentroid.open(tx, true);
 		if (rfCentroid.fileSize() == 0)
 			RecordFile.formatFileHeader(tiCentroid.fileName(), tx);
@@ -190,6 +202,7 @@ public class IVFIndex extends Index {
 			// create a table file for each cluster
 			String tblname = ii.indexName() + i;
 			TableInfo ti = new TableInfo(tblname, schema());
+			VanillaDb.catalogMgr().createTable(tblname, schema(), tx);
 			RecordFile rf = ti.open(tx, true);
 
 			// initialize the file header if needed
