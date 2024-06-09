@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.vanilladb.core.util.CoreProperties;
 
 import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.storage.index.SearchKey;
@@ -23,9 +22,6 @@ public class IndexCluster {
     // private static List<SearchKey> centroidData;
     
 
-    public static final int k = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".K", 10);
-    public static final int DIMENSION = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".DIMENSION", 128);
-    public static final int random_seed = CoreProperties.getLoader().getPropertyAsInteger(IndexCluster.class.getName() + ".SEED", 56);
     public IndexCluster(List<SearchKey> tdata) {
         trainingData = tdata;
     }
@@ -34,7 +30,7 @@ public class IndexCluster {
 
         // init training data
         int len = trainingData.size();
-        float[][] data = new float[len][DIMENSION];
+        float[][] data = new float[len][IVFIndex.DIMENSION];
         int i_len = 0;
         for (SearchKey key : trainingData) {
             float[] data_point = ((VectorConstant)key.get(1)).asJavaVal();
@@ -44,13 +40,13 @@ public class IndexCluster {
 
         // set the cluster
         System.out.println("Start fitting...");
-        KMeans kmeans = new KMeans(k, random_seed);
+        KMeans kmeans = new KMeans(IVFIndex.K, IVFIndex.random_seed);
         kmeans.fit(data);
 
         // set resultData
         int[] clusters = kmeans.predict(data);
-        resultData = new ArrayList<List<SearchKey>>(k);
-        for (int i = 0; i < k; i++) {
+        resultData = new ArrayList<List<SearchKey>>(IVFIndex.K);
+        for (int i = 0; i < IVFIndex.K; i++) {
             resultData.add(new ArrayList<SearchKey>());
         }
         for (int i = 0; i < data.length; i++) {
@@ -71,9 +67,6 @@ public class IndexCluster {
     
 
     // getter function
-    public int getK() {
-        return k;
-    }
 
     public List<float[]> getCentroidList() {
         return centroidData;
@@ -92,7 +85,7 @@ public class IndexCluster {
 
         public KMeans(int k, int seed) {
             this.k = k;
-            this.centroids = new float[k][DIMENSION];
+            this.centroids = new float[k][IVFIndex.DIMENSION];
             this.rand = new Random(seed);
             this.cur_k = 0;
         }
@@ -175,14 +168,14 @@ public class IndexCluster {
         }
 
         private void updateCentroids(float[][] data, int[] assignments) {
-            float[][] newCentroids = new float[k][DIMENSION];
+            float[][] newCentroids = new float[k][IVFIndex.DIMENSION];
             int[] counts = new int[k];
 
             for (int i = 0; i < data.length; i++) {
                 // data i 在第幾個 cluster
                 int cluster = assignments[i];
                 // 把屬於同個cluster的所有點加起來
-                for (int j = 0; j < DIMENSION; j++) {
+                for (int j = 0; j < IVFIndex.DIMENSION; j++) {
                     newCentroids[cluster][j] += data[i][j];
                 }
                 counts[cluster]++;
@@ -191,7 +184,7 @@ public class IndexCluster {
             // 計算這k個cluster的個別新centroid
             for (int i = 0; i < k; i++) {
                 if (counts[i] == 0) continue;
-                for (int j = 0; j < DIMENSION; j++) {
+                for (int j = 0; j < IVFIndex.DIMENSION; j++) {
                     newCentroids[i][j] /= counts[i];
                 }
             }

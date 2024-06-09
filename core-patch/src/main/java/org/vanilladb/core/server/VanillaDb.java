@@ -34,6 +34,7 @@ import org.vanilladb.core.server.task.TaskMgr;
 import org.vanilladb.core.sql.storedprocedure.SampleStoredProcedureFactory;
 import org.vanilladb.core.sql.storedprocedure.StoredProcedureFactory;
 import org.vanilladb.core.storage.file.FileMgr;
+import org.vanilladb.core.storage.index.ivf.IVFIndex;
 import org.vanilladb.core.storage.log.LogMgr;
 import org.vanilladb.core.storage.metadata.CatalogMgr;
 import org.vanilladb.core.storage.metadata.index.IndexInfo;
@@ -141,6 +142,8 @@ public class VanillaDb {
 			RecoveryMgr.initializeSystem(initTx);
 			if (logger.isLoggable(Level.INFO))
 				logger.info("the database has been recovered to a consistent state.");
+			IVFIndex idx = VanillaDb.catalogMgr().getIndexInfoByName(IVFIndex.INDEXNAME, initTx).openIVF(initTx);
+			idx.preLoadToMemory();
 		}
 
 		// initialize the statistics manager to build the histogram
@@ -148,6 +151,7 @@ public class VanillaDb {
 
 		// create a checkpoint
 		txMgr.createCheckpoint(initTx);
+
 
 		// commit the initializing transaction
 		initTx.commit();
