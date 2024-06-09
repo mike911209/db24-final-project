@@ -44,7 +44,7 @@ public class AdvancedQueryPlanner implements QueryPlanner {
         // Step 1: Calculate the distance between the query and the centroid
         // ASFINAL: global centroid
 
-        IVFIndex idx = VanillaDb.IVFII.openIVF(tx);
+        IVFIndex idx = VanillaDb.catalogMgr().getIndexInfoByName(IVFIndex.INDEXNAME, tx).openIVF(tx);
         idx.beforeFirst(new SearchRange(new SearchKey()));
         while (idx.next()) {
             float[] vec = (float []) idx.getval(IVFIndex.SCHEMA_VECTOR).asJavaVal();
@@ -86,7 +86,7 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             System.err.println("Error: the number of centroid is not equal to N");
         }
         for (int cluster : id_centroid) {
-            trunkPlans.add(new TablePlan(VanillaDb.IVFII.indexName() + cluster, tx));
+            trunkPlans.add(new TablePlan(IVFIndex.INDEXNAME + cluster, tx));
         }
 
         // Step 3.2: GroupByPlan => 照理來講不會執行

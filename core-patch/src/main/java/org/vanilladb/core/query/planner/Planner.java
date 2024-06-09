@@ -96,6 +96,13 @@ public class Planner {
 			throw new UnsupportedOperationException();
 	}
 
+	public int executeLoad(String cmd, Transaction tx) {
+		Parser parser = new Parser(cmd);
+		Object obj = parser.updateCommand();
+		Verifier.verifyInsertData((InsertData) obj, tx);
+		return uPlanner.executeLoad((InsertData) obj, tx);
+	}
+
 	public int executeInsert(InsertData cmd, Transaction tx) {
 		if (tx.isReadOnly())
 			throw new UnsupportedOperationException();

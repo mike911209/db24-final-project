@@ -50,7 +50,9 @@ public class IVFIndex extends Index {
 	 */
 
 	public static final String SCHEMA_ID = "i_id", SCHEMA_VECTOR = "i_emb";
-	public static final String CENTROID_NAME = "centroid";
+	public static final String CENTROID_NAME = "_centroid";
+
+	public static final String INDEXNAME = "idx_sift";
 	
 	public static final int N = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".N", 2);
     public static final int K = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".K", 10);
@@ -70,9 +72,15 @@ public class IVFIndex extends Index {
 		sch.addField(SCHEMA_VECTOR, VECTOR(128));
 		return sch;
 	}
+
+	private static Schema schemaCentroid() {
+		Schema sch = new Schema();
+		sch.addField(SCHEMA_VECTOR, VECTOR(128));
+		return sch;
+	}
 	
 	private int cur_centroid_id = 0;
-	private static List<float[]> centroidVecList;
+	private static List<float[]> centroidVecList = null;
 	private static List<SearchKey> recordList = new ArrayList<SearchKey>(100000);
 	
 
@@ -88,7 +96,7 @@ public class IVFIndex extends Index {
 		if(centroidVecList == null) {
 			// load the centroid page
 			centroidVecList = new ArrayList<float[]>();
-			TableInfo ti = new TableInfo(ii.tableName() + CENTROID_NAME, schema());
+			TableInfo ti = new TableInfo(ii.indexName() + CENTROID_NAME, schemaCentroid());
 			RecordFile rf = ti.open(tx, false);
 			rf.beforeFirst();
 			while (rf.next()) {
@@ -106,16 +114,16 @@ public class IVFIndex extends Index {
 		if (centroidVecList == null) {
 			// open the record file
 			preLoadToMemory();
-			cur_centroid_id = 0;
+			cur_centroid_id = -1;
 		} else {
-			cur_centroid_id = 0;
+			cur_centroid_id = -1;
 		}
 	}
 	@Override
 	public boolean next() {
 		// !FTODO: call the beforeFirst method first
 		// 		 iterate the record file opened in beforeFirst to find the next record
-		if (cur_centroid_id >= centroidVecList.size()) {
+		if (cur_centroid_id + 1 >= centroidVecList.size()) {
 			return false;
 		}
 		else {
@@ -134,10 +142,14 @@ public class IVFIndex extends Index {
 	// ASFINAL: there should be another INSERT
 	@Override
 	public void insert(SearchKey key, RecordId dataRecordId, boolean doLogicalLogging) {
+		int clusterId = chooseInsertCluster(key);
+
+		System.out.println("Inserting record into cluster " + clusterId);
+
+	}
+
+	public void load(SearchKey key) {
 		// NOTE: insert data into static list to be used later in clustering
-		// System.out.println("val is " + key.get(1));
-		// insert the data
-		// System.out.println("id is: " + key.get(0));
 
 		recordList.add(key);
 	}
@@ -157,11 +169,21 @@ public class IVFIndex extends Index {
 	public void train(Transaction tx) {
 		// obtain lists of clustered records
 		List<List<SearchKey>> clusters = clustering();
-		System.out.println("clusters size: " + clusters.size());
+		System.out.println("clusters num: " + clusters.size());
 
-		// create centroid page MIKE 
-		// List<float[]> centroidList
-		// 		* element -> 128 dimension float array
+		// create centroid page 
+		System.out.println("Creating centroid page...");
+		String tblName = ii.indexName() + CENTROID_NAME;
+		TableInfo tiCentroid = new TableInfo(tblName, schemaCentroid());
+		RecordFile rfCentroid = tiCentroid.open(tx, true);
+		if (rfCentroid.fileSize() == 0)
+			RecordFile.formatFileHeader(tiCentroid.fileName(), tx);
+		rfCentroid.beforeFirst();
+		for (float[] vec : centroidVecList) {
+			rfCentroid.insert();
+			rfCentroid.setVal(SCHEMA_VECTOR, new VectorConstant(vec));
+		}
+		rfCentroid.close();
 
 		// create index files
 		for (int i = 0; i < clusters.size(); i++) {
@@ -222,9 +244,6 @@ public class IVFIndex extends Index {
 		return indexCluster.getClusteringList();
 
 	}
-
-
-
 
 	private int chooseInsertCluster(SearchKey key) {
 		preLoadToMemory();

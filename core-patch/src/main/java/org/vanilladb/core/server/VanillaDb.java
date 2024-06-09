@@ -58,9 +58,6 @@ import org.vanilladb.core.util.Profiler;
  */
 public class VanillaDb {
 
-	// ASFINAL IVF => Centroid Page
-	public static IndexInfo IVFII;
-
 	// Logger
 	private static Logger logger = Logger.getLogger(VanillaDb.class.getName());
 

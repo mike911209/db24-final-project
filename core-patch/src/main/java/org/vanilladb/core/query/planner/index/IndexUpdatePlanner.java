@@ -54,9 +54,6 @@ import org.vanilladb.core.storage.tx.Transaction;
 public class IndexUpdatePlanner implements UpdatePlanner {
 	@Override
 	public int executeInsert(InsertData data, Transaction tx) {
-		String tblname = data.tableName();
-		Plan p = new TablePlan(tblname, tx);
-		
 		// Construct a map from field names to values
 		Map<String, Constant> fldValMap = new HashMap<String, Constant>();
 		Iterator<Constant> valIter = data.vals().iterator();
@@ -65,34 +62,11 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 			fldValMap.put(fldname, val);
 		}
 
-		// Insert the record into the record file
-		UpdateScan s = (UpdateScan) p.open();
-		s.insert();
-		for (Map.Entry<String, Constant> fldValPair : fldValMap.entrySet()) {
-			s.setVal(fldValPair.getKey(), fldValPair.getValue());
-		}
-		RecordId rid = s.getRecordId();
-		s.close();
-		
-		// Insert the record to all corresponding indexes
-		Set<IndexInfo> indexes = new HashSet<IndexInfo>();
-		for (String fldname : data.fields()) {
-			List<IndexInfo> iis = VanillaDb.catalogMgr().getIndexInfo(tblname, fldname, tx);
-			indexes.addAll(iis);
-		}
-		
-		for (IndexInfo ii : indexes) {
-			if (ii.indexType() == IndexType.IVF) {
-				// FTODO: cache IVFIndex, not open every time
-				IVFIndex idx = ii.openIVF(tx);
-				idx.insert(new SearchKey(ii.fieldNames(), fldValMap), rid, true);
-				idx.close();
-			} else {
-				Index idx = ii.open(tx);
-				idx.insert(new SearchKey(ii.fieldNames(), fldValMap), rid, true);
-				idx.close();
-			}
-		}
+		// insert the record into IVF index
+		IndexInfo ii = VanillaDb.catalogMgr().getIndexInfoByName(IVFIndex.INDEXNAME, tx);
+		IVFIndex idx = ii.openIVF(tx);
+		idx.insert(new SearchKey(ii.fieldNames(), fldValMap), null, true);
+		idx.close();
 		
 		VanillaDb.statMgr().countRecordUpdates(data.tableName(), 1);
 		return 1;
@@ -290,6 +264,7 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 		return 0;
 	}
 
+	@Override
 	public void executeTrainIndex(String idxName, Transaction tx) {
 		IndexInfo ii = VanillaDb.catalogMgr().getIndexInfoByName(idxName, tx);
 		if (ii.indexType() == IndexType.IVF) {
@@ -303,5 +278,23 @@ public class IndexUpdatePlanner implements UpdatePlanner {
 		}
 	}
 
-	
+	@Override
+	public int executeLoad(InsertData data, Transaction tx) {
+		// Construct a map from field names to values
+		Map<String, Constant> fldValMap = new HashMap<String, Constant>();
+		Iterator<Constant> valIter = data.vals().iterator();
+		for (String fldname : data.fields()) {
+			Constant val = valIter.next();
+			fldValMap.put(fldname, val);
+		}
+
+		// insert the record into IVF index
+		IndexInfo ii = VanillaDb.catalogMgr().getIndexInfoByName(IVFIndex.INDEXNAME, tx);
+		IVFIndex idx = ii.openIVF(tx);
+		idx.load(new SearchKey(ii.fieldNames(), fldValMap));
+		idx.close();
+		
+		VanillaDb.statMgr().countRecordUpdates(data.tableName(), 1);
+		return 1;
+	}
 }

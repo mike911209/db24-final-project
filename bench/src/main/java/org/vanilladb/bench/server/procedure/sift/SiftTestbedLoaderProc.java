@@ -97,7 +97,7 @@ public class SiftTestbedLoaderProc extends StoredProcedure<SiftTestbedLoaderPara
                 String sql = "INSERT INTO sift(i_id, i_emb) VALUES (" + iid + ", [" + vectorString + "])";
                 // logger.info(sql);
                 iid++;
-                StoredProcedureUtils.executeUpdate(sql, tx);
+                StoredProcedureUtils.executeLoad(sql, tx);
             }
         } catch (IOException e) {
             e.printStackTrace();

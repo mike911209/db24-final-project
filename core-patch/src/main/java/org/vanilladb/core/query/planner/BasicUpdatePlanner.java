@@ -131,4 +131,9 @@ public class BasicUpdatePlanner implements UpdatePlanner {
 	@Override
 	public void executeTrainIndex(String idxName, Transaction tx) {
 	}
+
+	@Override
+	public int executeLoad(InsertData data, Transaction tx) {
+		return 0;
+	}
 }

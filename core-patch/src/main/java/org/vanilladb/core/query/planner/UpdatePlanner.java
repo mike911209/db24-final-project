@@ -141,4 +141,5 @@ public interface UpdatePlanner {
 	int executeDropIndex(DropIndexData data, Transaction tx);
 
 	void executeTrainIndex(String idxName, Transaction tx);
+	int executeLoad(InsertData data, Transaction tx);
 }
