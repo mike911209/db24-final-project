@@ -17,6 +17,7 @@ package org.vanilladb.core.storage.index;
 
 import org.vanilladb.core.storage.index.btree.BTreeIndex;
 import org.vanilladb.core.storage.index.hash.HashIndex;
+import org.vanilladb.core.storage.index.ivf.IVFIndex;
 import org.vanilladb.core.storage.metadata.index.IndexInfo;
 import org.vanilladb.core.storage.record.RecordId;
 import org.vanilladb.core.storage.tx.Transaction;
