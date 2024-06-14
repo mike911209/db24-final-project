@@ -80,10 +80,10 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             dist.set(min_id, Float.MAX_VALUE);
             // System.out.println("total: " + total + " min_id: " + min_id + " count: " + count);
         }
-        System.out.println("total: " + total);
-        for (Integer i : id_centroid) {
-            System.out.println("id_centroid: " + i + " count: " + idx.getClusterCount(i));
-        }
+        // System.out.println("total: " + total);
+        // for (Integer i : id_centroid) {
+        //     System.out.println("id_centroid: " + i + " count: " + idx.getClusterCount(i));
+        // }
         
         // Step 3: Create the plans
 
@@ -98,7 +98,7 @@ public class AdvancedQueryPlanner implements QueryPlanner {
 
         // Step 3.2: SortPlan
         if (data.embeddingFields() != null) {
-            for (int i = 0; i < IVFIndex.N; i++) {
+            for (int i = 0; i < id_centroid.size(); i++) {
                 // System.out.println("sort plan: " + data.embeddingFields().size());
                 trunk = new SortPlan(trunkPlans.get(i), 
                             data.embeddingFields().get(0), tx);
@@ -108,7 +108,7 @@ public class AdvancedQueryPlanner implements QueryPlanner {
 
         // Step 3.3: LimitPlan
         if (data.limit() != -1) {
-            for (int i = 0; i < IVFIndex.N; i++) {
+            for (int i = 0; i < id_centroid.size(); i++) {
                 trunk = new LimitPlan(trunkPlans.get(i), data.limit());
                 trunkPlans.set(i, trunk);
             }
@@ -116,7 +116,6 @@ public class AdvancedQueryPlanner implements QueryPlanner {
 
         // Step 3.4: AdvancedPlan
 		topPlan = new AdvancedQueryPlan(trunkPlans, data.embeddingFields(), data.projectFields());
-
         return topPlan;
     }
 }
