@@ -25,6 +25,7 @@ import static org.vanilladb.core.sql.Type.VECTOR;
 import org.vanilladb.core.query.planner.opt.AdvancedQueryPlanner;
 import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.sql.Constant;
+import org.vanilladb.core.sql.IntegerConstant;
 import org.vanilladb.core.sql.Schema;
 import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.storage.index.Index;
@@ -50,13 +51,13 @@ public class IVFIndex extends Index {
 	 * A field name of the schema of index records.
 	 */
 
-	public static final String SCHEMA_ID = "i_id", SCHEMA_VECTOR = "i_emb";
+	public static final String SCHEMA_ID = "i_id", SCHEMA_VECTOR = "i_emb", SCHEMA_COUNT = "i_count";
 	public static final String CENTROID_NAME = "_centroid";
-
+	public static final String CLUSTER_COUNT = "_count";
 	public static final String INDEXNAME = "idx_sift";
 	
 	public static final int N = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".N", 10);
-    public static final int K = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".K", 10);
+    public static final int K = CoreProperties.getLoader().getPropertyAsInteger(AdvancedQueryPlanner.class.getName() + ".K", 50);
 	
 	public static final int DIMENSION = CoreProperties.getLoader().getPropertyAsInteger(KmeansAlgo.class.getName() + ".DIMENSION", 128);
     public static final int random_seed = CoreProperties.getLoader().getPropertyAsInteger(KmeansAlgo.class.getName() + ".SEED", 56);
@@ -79,11 +80,17 @@ public class IVFIndex extends Index {
 		sch.addField(SCHEMA_VECTOR, VECTOR(128));
 		return sch;
 	}
+
+	private static Schema schemaCount() {
+		Schema sch = new Schema();
+		sch.addField(SCHEMA_COUNT, INTEGER);
+		return sch;
+	}
 	
 	private int cur_centroid_id = 0;
 	private static List<float[]> centroidVecList = null;
 	private static List<SearchKey> recordList = new ArrayList<SearchKey>(100000);
-	
+	public int[] cluster_count = new int[K];
 
 	public IVFIndex(IndexInfo ii, SearchKeyType keyType, Transaction tx) {
 		super(ii, keyType, tx);
@@ -107,6 +114,18 @@ public class IVFIndex extends Index {
 			}
 			rf.close();
 		}
+
+		TableInfo tiCount = new TableInfo(ii.indexName()+CLUSTER_COUNT, schemaCount());
+		RecordFile rfCount = tiCount.open(tx, true);
+		rfCount.beforeFirst();
+		int c=0;
+		while (rfCount.next()) {
+			cluster_count[c] = (int)rfCount.getVal(SCHEMA_COUNT).asJavaVal();
+			System.out.println("cluster " + c + " has " + cluster_count[c] + " records");
+			c++;
+		}
+		rfCount.close();
+		
 	}
 
 	@Override
@@ -141,8 +160,8 @@ public class IVFIndex extends Index {
 	@Override
 	public void insert(SearchKey key, RecordId dataRecordId, boolean doLogicalLogging) {
 		int clusterId = chooseInsertCluster(key);
-
-		System.out.println("Inserting record into cluster " + clusterId);
+		cluster_count[clusterId]++;
+		// System.out.println("Inserting record into cluster " + clusterId);
 
 		// open the record file
 		TableInfo ti = new TableInfo(ii.indexName() + clusterId, schema());
@@ -208,15 +227,16 @@ public class IVFIndex extends Index {
 			rf.beforeFirst();
 
 			List<SearchKey> cluster = clusters.get(i);
-
+			cluster_count[i] = cluster.size();
 			// insert records
 			System.out.println("insert " + cluster.size() + " records in cluster " + i);
+			// System.out.println("cluster size: " + cluster_count[i]);
 			for (SearchKey record : cluster) {
 				rf.insert();
 				// System.out.println(record.get(0));
 				// System.out.println(record.get(1));
 				// System.out.println("record length: " + record.length());
-				System.out.println("id is: " + record.get(0));
+				// System.out.println("id is: " + record.get(0));
 				rf.setVal(SCHEMA_ID, record.get(0));
 				rf.setVal(SCHEMA_VECTOR, record.get(1));
 			}
@@ -224,6 +244,20 @@ public class IVFIndex extends Index {
 			// close the index files
 			rf.close();
 		}
+
+		System.out.println("Creating CLUSTER_COUNT...");
+		tblName = ii.indexName() + CLUSTER_COUNT;
+		TableInfo tiCount = new TableInfo(tblName, schemaCount());
+		VanillaDb.catalogMgr().createTable(tblName, schemaCount(), tx);
+		RecordFile rfCount = tiCount.open(tx, true);
+		if (rfCount.fileSize() == 0)
+			RecordFile.formatFileHeader(tiCentroid.fileName(), tx);
+			rfCount.beforeFirst();
+		for (int cnt : cluster_count) {
+			rfCount.insert();
+			rfCount.setVal(SCHEMA_COUNT, new IntegerConstant(cnt));
+		}
+		rfCount.close();
 		
 	}
 

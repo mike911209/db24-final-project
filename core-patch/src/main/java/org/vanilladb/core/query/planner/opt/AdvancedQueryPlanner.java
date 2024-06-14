@@ -57,8 +57,8 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             System.err.println("Error: the number of centroid is not equal to K");
             
         }
-
-        for (int i = 0; i < IVFIndex.N; i++) {
+        int total = 0;
+        while(total < 20) {
             float min = Float.MAX_VALUE;
             int min_id = -1;
             
@@ -69,10 +69,13 @@ public class AdvancedQueryPlanner implements QueryPlanner {
                 }
             }
             if (min_id == -1) {
-                System.err.println("Error: cannot find the centroid id");
+                System.out.println("Error: cannot find the minimum distance"+ "in total: " + total );
                 break;
             }
             id_centroid.add(min_id);
+            int count = idx.cluster_count[min_id];
+            // System.out.println("cluster " + min_id + " has " + count + " records");
+            total += count;
             dist.set(min_id, Float.MAX_VALUE);
         }
 
@@ -80,9 +83,9 @@ public class AdvancedQueryPlanner implements QueryPlanner {
         // Step 3: Create the plans
 
         // Step 3.1: TablePlan
-        if (id_centroid.size() != IVFIndex.N) {
-            System.err.println("Error: the number of centroid is not equal to N");
-        }
+        // if (id_centroid.size() != IVFIndex.N) {
+        //     System.err.println("Error: the number of centroid is not equal to N");
+        // }
         for (int cluster : id_centroid) {
             trunkPlans.add(new TablePlan(IVFIndex.INDEXNAME + cluster, tx));
         }
