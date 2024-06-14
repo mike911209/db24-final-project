@@ -90,7 +90,7 @@ public class IVFIndex extends Index {
 	private int cur_centroid_id = 0;
 	private static List<float[]> centroidVecList = null;
 	private static List<SearchKey> recordList = new ArrayList<SearchKey>(100000);
-	public int[] cluster_count = new int[K];
+	public  static  int[] cluster_count = new int[K];
 
 	public IVFIndex(IndexInfo ii, SearchKeyType keyType, Transaction tx) {
 		super(ii, keyType, tx);
@@ -269,6 +269,10 @@ public class IVFIndex extends Index {
 			
 		return new VectorConstant(centroidVecList.get(cur_centroid_id));
 	}
+
+	public  int getClusterCount(int id) {
+        return cluster_count[id];
+    }
 
 	private List<List<SearchKey>> clustering() {
 		// NOTE: clustering algorithm
