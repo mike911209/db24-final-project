@@ -81,6 +81,9 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             // System.out.println("total: " + total + " min_id: " + min_id + " count: " + count);
         }
         System.out.println("total: " + total);
+        for (Integer i : id_centroid) {
+            System.out.println("id_centroid: " + i + " count: " + idx.getClusterCount(i));
+        }
         
         // Step 3: Create the plans
 

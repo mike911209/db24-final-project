@@ -40,6 +40,7 @@ public class AdvancedQueryScan implements Scan {
 
     @Override
     public Constant getVal(String fldName) {
+        System.out.println("curReturn: " + curReturn);
         // TODO Auto-generated method stub
         Constant ansVal = null;
         float minDist = Float.MAX_VALUE;
@@ -51,6 +52,7 @@ public class AdvancedQueryScan implements Scan {
                 // System.out.println("curCluster: " + curCluster);
                 ansVal = subScans.get(i).getVal(fldName);
             }
+            
         }
         
         return ansVal;
@@ -81,13 +83,13 @@ public class AdvancedQueryScan implements Scan {
         }
         // 如果該cluster不足LIMIT個，則設為MAX_VALUE，避免選到
         else if (!subScans.get(curCluster).next()) {
-            // System.out.println("Cluster " + curCluster + " is not enough.");
+            System.out.println("Cluster " + curCluster + " is not enough.");
             dist.set(curCluster, Float.MAX_VALUE);
             return true;
         }
         // 把next過的cluster的dist重新計算
         else {
-            // System.out.println("Cluster " + curCluster + " is enough.");
+            System.out.println("Cluster " + curCluster + " is enough.");
             float tmp_dist = 0;
             for (DistanceFn queryVec : embFields) {
                 float[] vec = (float[]) subScans.get(curCluster).getVal(IVFIndex.SCHEMA_VECTOR).asJavaVal();

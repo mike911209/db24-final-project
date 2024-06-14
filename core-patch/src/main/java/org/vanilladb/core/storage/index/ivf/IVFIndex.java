@@ -212,7 +212,7 @@ public class IVFIndex extends Index {
 			rfCentroid.setVal(SCHEMA_VECTOR, new VectorConstant(vec));
 		}
 		rfCentroid.close();
-
+		int c=0;
 		// create data page
 		for (int i = 0; i < clusters.size(); i++) {
 			// create a table file for each cluster
@@ -228,6 +228,7 @@ public class IVFIndex extends Index {
 
 			List<SearchKey> cluster = clusters.get(i);
 			cluster_count[i] = cluster.size();
+			c+=cluster.size();
 			// insert records
 			System.out.println("insert " + cluster.size() + " records in cluster " + i);
 			// System.out.println("cluster size: " + cluster_count[i]);
@@ -244,7 +245,7 @@ public class IVFIndex extends Index {
 			// close the index files
 			rf.close();
 		}
-
+		System.out.println("total records: " + c);
 		System.out.println("Creating CLUSTER_COUNT...");
 		tblName = ii.indexName() + CLUSTER_COUNT;
 		TableInfo tiCount = new TableInfo(tblName, schemaCount());
