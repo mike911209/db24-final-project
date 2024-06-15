@@ -36,7 +36,7 @@ public class AdvancedQueryScan implements Scan {
     private PriorityQueue<Pair> maxHeap = new PriorityQueue<>(new MaxHeapComparator());
     private List<DistanceFn> embFields = new ArrayList<DistanceFn>();
     private List<Scan> subScans = new ArrayList<Scan>();;
-    private List<Float> dist;
+    private List<Integer> dist;
     private int curCluster = 0;
     private int curReturn = 0;
 
@@ -46,7 +46,7 @@ public class AdvancedQueryScan implements Scan {
     public AdvancedQueryScan(List<Scan> subScans, List<DistanceFn> embFields) {
         this.embFields.addAll(embFields);
         this.subScans = subScans;
-        dist = new ArrayList<Float>();
+        dist = new ArrayList<Integer>();
         curCluster = 0;
         curReturn = 0;
     }

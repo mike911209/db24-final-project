@@ -5,10 +5,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.vanilladb.core.sql.VectorConstant;
+import org.vanilladb.core.sql.distfn.EuclideanFn;
 import org.vanilladb.core.storage.index.SearchKey;
 
 import smile.math.distance.EuclideanDistance;
 import java.util.Random;
+import java.util.Vector;
 
 
 // ASFINAL: Optimization needed
@@ -138,9 +140,11 @@ public class KmeansAlgo {
         // 與最近cluster centroid的距離
         private float nearestClusterDistance(float[] point) {
             float minDistance = Float.POSITIVE_INFINITY;
-            EuclideanDistance distance = new EuclideanDistance();
+            // EuclideanDistance distance = new EuclideanDistance();
+            EuclideanFn dis = new EuclideanFn("");
+            dis.setQueryVector(new VectorConstant(point));
             for (int i = 0; i <= cur_k; i++) {
-                float dist = (float)distance.d(point, centroids[i]);
+                int dist = (int)dis.distance(new VectorConstant(centroids[i]));
                 if (dist < minDistance) {
                     minDistance = dist;
                 }
@@ -151,10 +155,12 @@ public class KmeansAlgo {
         // 從centroid中找到最近的
         private int nearestCluster(float[] point) {
             int minCluster = 0;
-            float minDistance = Float.POSITIVE_INFINITY;
-            EuclideanDistance distance = new EuclideanDistance();
+            int minDistance = Integer.MAX_VALUE;
+            // EuclideanDistance distance = new EuclideanDistance();
+            EuclideanFn dis = new EuclideanFn("");
+            dis.setQueryVector(new VectorConstant(point));
             for (int i = 0; i < k; i++) {
-                float dist = (float)distance.d(point, centroids[i]);
+                int dist = (int)dis.distance(new VectorConstant(centroids[i]));
                 if (dist < minDistance) {
                     minDistance = dist;
                     minCluster = i;
