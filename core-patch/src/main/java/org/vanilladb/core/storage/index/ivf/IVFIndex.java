@@ -40,6 +40,8 @@ import org.vanilladb.core.storage.tx.Transaction;
 import org.vanilladb.core.util.CoreProperties;
 
 import smile.math.distance.EuclideanDistance;
+import org.vanilladb.core.sql.VectorConstant;
+import org.vanilladb.core.sql.distfn.EuclideanFn;
 
 /**
  * A static hash implementation of {@link Index}. A fixed number of buckets is
@@ -299,10 +301,10 @@ public class IVFIndex extends Index {
 		int min_id = 0;
 		float min_dist = Float.MAX_VALUE;
 		float[] keyVec = (float[]) key.get(1).asJavaVal();
-		EuclideanDistance distance = new EuclideanDistance();
+		EuclideanFn distance = new EuclideanFn("");
+		distance.setQueryVector(new VectorConstant(keyVec));
 		for (float[] vec : centroidVecList) {
-			
-			float dist = (float) distance.d(keyVec, vec);
+			float dist = (float) distance.distance(new VectorConstant(vec));
 			if (dist < min_dist) {
 				min_dist = dist;
 				min_id = centroidVecList.indexOf(vec);

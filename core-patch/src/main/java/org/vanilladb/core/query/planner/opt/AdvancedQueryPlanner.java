@@ -4,6 +4,8 @@ package org.vanilladb.core.query.planner.opt;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.vanilladb.core.query.algebra.AdvancedQueryPlan;
+import org.vanilladb.core.query.algebra.LimitPlan;
 import org.vanilladb.core.query.algebra.Plan;
 import org.vanilladb.core.query.algebra.TablePlan;
 import org.vanilladb.core.query.algebra.materialize.SortPlan;
@@ -12,12 +14,10 @@ import org.vanilladb.core.query.planner.QueryPlanner;
 import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.sql.distfn.DistanceFn;
-import org.vanilladb.core.storage.tx.Transaction;
-import org.vanilladb.core.query.algebra.AdvancedQueryPlan;
-import org.vanilladb.core.query.algebra.LimitPlan;
-import org.vanilladb.core.storage.index.ivf.IVFIndex;
 import org.vanilladb.core.storage.index.SearchKey;
 import org.vanilladb.core.storage.index.SearchRange;
+import org.vanilladb.core.storage.index.ivf.IVFIndex;
+import org.vanilladb.core.storage.tx.Transaction;
 
 
 // ASFINAL: all implemented by table
@@ -59,7 +59,7 @@ public class AdvancedQueryPlanner implements QueryPlanner {
         }
         int total = 0;
 
-        while(total < 20) {
+        while(total < 50) {
             float min = Float.MAX_VALUE;
             int min_id = -1;
             
