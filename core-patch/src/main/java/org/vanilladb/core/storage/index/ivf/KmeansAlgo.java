@@ -144,7 +144,7 @@ public class KmeansAlgo {
             EuclideanFn dis = new EuclideanFn("");
             dis.setQueryVector(new VectorConstant(point));
             for (int i = 0; i <= cur_k; i++) {
-                float dist = (float)dis.distance(new VectorConstant(centroids[i]));
+                int dist = (int)dis.distance(new VectorConstant(centroids[i]));
                 if (dist < minDistance) {
                     minDistance = dist;
                 }
@@ -155,12 +155,12 @@ public class KmeansAlgo {
         // 從centroid中找到最近的
         private int nearestCluster(float[] point) {
             int minCluster = 0;
-            float minDistance = Float.POSITIVE_INFINITY;
+            int minDistance = Integer.MAX_VALUE;
             // EuclideanDistance distance = new EuclideanDistance();
             EuclideanFn dis = new EuclideanFn("");
             dis.setQueryVector(new VectorConstant(point));
             for (int i = 0; i < k; i++) {
-                float dist = (float)dis.distance(new VectorConstant(centroids[i]));
+                int dist = (int)dis.distance(new VectorConstant(centroids[i]));
                 if (dist < minDistance) {
                     minDistance = dist;
                     minCluster = i;

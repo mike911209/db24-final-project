@@ -19,6 +19,7 @@ package org.vanilladb.core.storage.index.ivf;
 import java.util.ArrayList;
 import java.util.List;
 
+
 import static org.vanilladb.core.sql.Type.INTEGER;
 import static org.vanilladb.core.sql.Type.VECTOR;
 
@@ -299,12 +300,12 @@ public class IVFIndex extends Index {
 
 	private int chooseInsertCluster(SearchKey key) {
 		int min_id = 0;
-		float min_dist = Float.MAX_VALUE;
+		int min_dist = Integer.MAX_VALUE;
 		float[] keyVec = (float[]) key.get(1).asJavaVal();
 		EuclideanFn distance = new EuclideanFn("");
 		distance.setQueryVector(new VectorConstant(keyVec));
 		for (float[] vec : centroidVecList) {
-			float dist = (float) distance.distance(new VectorConstant(vec));
+			int dist = (int) distance.distance(new VectorConstant(vec));
 			if (dist < min_dist) {
 				min_dist = dist;
 				min_id = centroidVecList.indexOf(vec);

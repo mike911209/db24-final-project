@@ -13,7 +13,7 @@ public class AdvancedQueryScan implements Scan {
 
     private List<DistanceFn> embFields = new ArrayList<DistanceFn>();
     private List<Scan> subScans = new ArrayList<Scan>();;
-    private List<Float> dist;
+    private List<Integer> dist;
     private int curCluster = 0;
     private int curReturn = 0;
 
@@ -23,7 +23,7 @@ public class AdvancedQueryScan implements Scan {
     public AdvancedQueryScan(List<Scan> subScans, List<DistanceFn> embFields) {
         this.embFields.addAll(embFields);
         this.subScans = subScans;
-        dist = new ArrayList<Float>();
+        dist = new ArrayList<Integer>();
         curCluster = 0;
         curReturn = 0;
     }
@@ -43,7 +43,7 @@ public class AdvancedQueryScan implements Scan {
         // System.out.println("curReturn: " + curReturn);
         // TODO Auto-generated method stub
         Constant ansVal = null;
-        float minDist = Float.MAX_VALUE;
+        int minDist = Integer.MAX_VALUE;
 
         for (int i = 0; i < dist.size(); i++) {
             if (dist.get(i) < minDist) {
@@ -73,12 +73,12 @@ public class AdvancedQueryScan implements Scan {
                     System.err.println("Error: Not enough data to return.");
                     return false;
                 }
-                float tmp_dist = 0;
+                int tmp_dist = 0;
                 
                 for (DistanceFn queryVec : embFields) {
                     float[] vec = (float[]) s.getVal(IVFIndex.SCHEMA_VECTOR).asJavaVal();
 
-                    tmp_dist += (float) queryVec.distance(new VectorConstant(vec));
+                    tmp_dist += (int) queryVec.distance(new VectorConstant(vec));
                 }
                 
                 dist.add(tmp_dist);
@@ -87,16 +87,16 @@ public class AdvancedQueryScan implements Scan {
         // 如果該cluster不足LIMIT個，則設為MAX_VALUE，避免選到
         else if (!subScans.get(curCluster).next()) {
             // System.out.println("Cluster " + curCluster + " is not enough.");
-            dist.set(curCluster, Float.MAX_VALUE);
+            dist.set(curCluster, Integer.MAX_VALUE);
             // return true;
         }
         // 把next過的cluster的dist重新計算
         else {
             // System.out.println("Cluster " + curCluster + " is enough.");
-            float tmp_dist = 0;
+            int tmp_dist = 0;
             for (DistanceFn queryVec : embFields) {
                 float[] vec = (float[]) subScans.get(curCluster).getVal(IVFIndex.SCHEMA_VECTOR).asJavaVal();
-                tmp_dist += (float) queryVec.distance(new VectorConstant(vec));
+                tmp_dist += (int) queryVec.distance(new VectorConstant(vec));
             }
             dist.set(curCluster, tmp_dist);
         }
