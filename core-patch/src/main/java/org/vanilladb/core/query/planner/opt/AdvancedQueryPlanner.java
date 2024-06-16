@@ -4,20 +4,19 @@ package org.vanilladb.core.query.planner.opt;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.vanilladb.core.query.algebra.AdvancedQueryPlan;
+import org.vanilladb.core.query.algebra.LimitPlan;
 import org.vanilladb.core.query.algebra.Plan;
 import org.vanilladb.core.query.algebra.TablePlan;
-import org.vanilladb.core.query.algebra.materialize.SortPlan;
 import org.vanilladb.core.query.parse.QueryData;
 import org.vanilladb.core.query.planner.QueryPlanner;
 import org.vanilladb.core.server.VanillaDb;
 import org.vanilladb.core.sql.VectorConstant;
 import org.vanilladb.core.sql.distfn.DistanceFn;
-import org.vanilladb.core.storage.tx.Transaction;
-import org.vanilladb.core.query.algebra.AdvancedQueryPlan;
-import org.vanilladb.core.query.algebra.LimitPlan;
-import org.vanilladb.core.storage.index.ivf.IVFIndex;
 import org.vanilladb.core.storage.index.SearchKey;
 import org.vanilladb.core.storage.index.SearchRange;
+import org.vanilladb.core.storage.index.ivf.IVFIndex;
+import org.vanilladb.core.storage.tx.Transaction;
 
 
 // ASFINAL: all implemented by table
@@ -57,8 +56,8 @@ public class AdvancedQueryPlanner implements QueryPlanner {
             System.err.println("Error: the number of centroid is not equal to K");
             
         }
-
-        for (int i = 0; i < IVFIndex.N; i++) {
+        int total = 0, cluster_cnt = 0;
+        while(total < 20 || cluster_cnt < IVFIndex.N) {
             float min = Float.MAX_VALUE;
             int min_id = -1;
             
@@ -69,46 +68,53 @@ public class AdvancedQueryPlanner implements QueryPlanner {
                 }
             }
             if (min_id == -1) {
-                System.err.println("Error: cannot find the centroid id");
+                // System.out.println("Error: cannot find the minimum distance"+ "in total: " + total );
                 break;
             }
             id_centroid.add(min_id);
+            int count = idx.getClusterCount(min_id);
+            // System.out.println("cluster " + min_id + " has " + count + " records");
+            total += count;
+            cluster_cnt += 1;
             dist.set(min_id, Float.MAX_VALUE);
+            // System.out.println("total: " + total + " min_id: " + min_id + " count: " + count);
         }
-
+        // System.out.println("total: " + total);
+        // for (Integer i : id_centroid) {
+        //     System.out.println("id_centroid: " + i + " count: " + idx.getClusterCount(i));
+        // }
         
         // Step 3: Create the plans
 
         // Step 3.1: TablePlan
-        if (id_centroid.size() != IVFIndex.N) {
-            System.err.println("Error: the number of centroid is not equal to N");
-        }
+        // if (id_centroid.size() != IVFIndex.N) {
+        //     System.err.println("Error: the number of centroid is not equal to N");
+        // }
         for (int cluster : id_centroid) {
             trunkPlans.add(new TablePlan(IVFIndex.INDEXNAME + cluster, tx));
         }
 
 
         // Step 3.2: SortPlan
-        if (data.embeddingFields() != null) {
-            for (int i = 0; i < IVFIndex.N; i++) {
-                // System.out.println("sort plan: " + data.embeddingFields().size());
-                trunk = new SortPlan(trunkPlans.get(i), 
-                            data.embeddingFields().get(0), tx);
-                trunkPlans.set(i, trunk);
-            }
-        }
+        // if (data.embeddingFields() != null) {
+        //     for (int i = 0; i < id_centroid.size(); i++) {
+        //         // System.out.println("sort plan: " + data.embeddingFields().size());
+        //         trunk = new SortPlan(trunkPlans.get(i), 
+        //                     data.embeddingFields().get(0), tx);
+        //         trunkPlans.set(i, trunk);
+        //     }
+        // }
 
         // Step 3.3: LimitPlan
-        if (data.limit() != -1) {
-            for (int i = 0; i < IVFIndex.N; i++) {
-                trunk = new LimitPlan(trunkPlans.get(i), data.limit());
-                trunkPlans.set(i, trunk);
-            }
-        }
+        // if (data.limit() != -1) {
+        //     for (int i = 0; i < id_centroid.size(); i++) {
+        //         trunk = new LimitPlan(trunkPlans.get(i), data.limit());
+        //         trunkPlans.set(i, trunk);
+        //     }
+        // }
 
         // Step 3.4: AdvancedPlan
 		topPlan = new AdvancedQueryPlan(trunkPlans, data.embeddingFields(), data.projectFields());
-
         return topPlan;
     }
 }
